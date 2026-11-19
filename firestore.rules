@@ -1,0 +1,226 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             data.preferredLanguage is string && data.preferredLanguage in ['ar', 'en'] &&
+             data.hrMinThreshold is int && data.hrMinThreshold >= 30 && data.hrMinThreshold <= 120 &&
+             data.hrMaxThreshold is int && data.hrMaxThreshold >= 80 && data.hrMaxThreshold <= 220 &&
+             data.hrMinThreshold < data.hrMaxThreshold &&
+             data.spo2MinThreshold is int && data.spo2MinThreshold >= 70 && data.spo2MinThreshold <= 98 &&
+             data.fallDetectionEnabled is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMedicalProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+             data.emergencyContactName is string && data.emergencyContactName.size() >= 1 && data.emergencyContactName.size() <= 100 &&
+             data.emergencyContactPhone is string && data.emergencyContactPhone.size() >= 3 && data.emergencyContactPhone.size() <= 30 &&
+             data.bloodGroup is string && data.bloodGroup in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'UNKNOWN'] &&
+             data.allergies is string && data.allergies.size() <= 500 &&
+             data.chronicDiseases is string && data.chronicDiseases.size() <= 500 &&
+             data.currentMedications is string && data.currentMedications.size() <= 500 &&
+             data.medicalNotes is string && data.medicalNotes.size() <= 1000 &&
+             data.nfcTokenId is string && data.nfcTokenId.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMeasurement(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.heartRateBpm is int && data.heartRateBpm >= 0 && data.heartRateBpm <= 260 &&
+             (!('spo2Percent' in data) || (data.spo2Percent is int && data.spo2Percent >= 50 && data.spo2Percent <= 100)) &&
+             data.spo2Valid is bool &&
+             data.sensorQuality is string && data.sensorQuality in ['GOOD', 'FAIR', 'POOR', 'UNAVAILABLE'] &&
+             data.movementStatus is string && data.movementStatus in ['RESTING', 'WALKING', 'ACTIVE', 'UNUSUAL_MOVEMENT', 'POSSIBLE_FALL'] &&
+             data.accelMagnitudeG is number && data.accelMagnitudeG >= 0.0 && data.accelMagnitudeG <= 32.0 &&
+             data.gyroMagnitudeDps is number && data.gyroMagnitudeDps >= 0.0 && data.gyroMagnitudeDps <= 2500.0 &&
+             (!('batteryPercent' in data) || (data.batteryPercent is int && data.batteryPercent >= 0 && data.batteryPercent <= 100)) &&
+             data.source is string && data.source.size() >= 1 && data.source.size() <= 40 &&
+             data.recordedAt is timestamp && data.recordedAt <= request.time;
+    }
+
+    function isValidEmergencyEvent(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.triggerType is string && data.triggerType in ['SOS_MANUAL', 'POSSIBLE_FALL', 'CRITICAL_VITALS'] &&
+             data.status is string && data.status in ['PENDING_CONFIRMATION', 'CONFIRMED', 'CANCELLED', 'RESOLVED'] &&
+             (!('heartRateAtEvent' in data) || (data.heartRateAtEvent is int && data.heartRateAtEvent >= 0 && data.heartRateAtEvent <= 260)) &&
+             (!('spo2AtEvent' in data) || (data.spo2AtEvent is int && data.spo2AtEvent >= 50 && data.spo2AtEvent <= 100)) &&
+             (!('latitude' in data) || (data.latitude is number && data.latitude >= -90.0 && data.latitude <= 90.0)) &&
+             (!('longitude' in data) || (data.longitude is number && data.longitude >= -180.0 && data.longitude <= 180.0)) &&
+             data.locationLabel is string && data.locationLabel.size() <= 200 &&
+             data.notificationStatus is string && data.notificationStatus in ['NOT_SENT', 'DISPATCHED_INTENT', 'CANCELLED'] &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidAlertRecord(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.category is string && data.category in ['HIGH_HR', 'LOW_HR', 'LOW_SPO2', 'SENSOR_QUALITY', 'UNUSUAL_MOVEMENT', 'POSSIBLE_FALL', 'BLE_DISCONNECTED', 'LOW_BATTERY', 'SENSOR_ERROR', 'EMERGENCY'] &&
+             data.severity is string && data.severity in ['INFO', 'WARNING', 'CRITICAL'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 500 &&
+             data.acknowledged is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidDevice(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 80 &&
+             data.macAddress is string && data.macAddress.size() >= 1 && data.macAddress.size() <= 64 &&
+             data.firmwareVersion is string && data.firmwareVersion.size() <= 32 &&
+             (!('batteryPercent' in data) || (data.batteryPercent is int && data.batteryPercent >= 0 && data.batteryPercent <= 100)) &&
+             (!('lastSyncAt' in data) || (data.lastSyncAt is timestamp && data.lastSyncAt <= request.time)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidNfcToken(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.tokenId is string && isValidId(data.tokenId) &&
+             data.profileId is string && isValidId(data.profileId) &&
+             data.tagUidHex is string && data.tagUidHex.size() <= 64 &&
+             data.label is string && data.label.size() >= 1 && data.label.size() <= 80 &&
+             data.active is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'preferredLanguage', 'hrMinThreshold', 'hrMaxThreshold', 'spo2MinThreshold', 'fallDetectionEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'preferredLanguage', 'hrMinThreshold', 'hrMaxThreshold', 'spo2MinThreshold', 'fallDetectionEnabled', 'createdAt', 'updatedAt']) &&
+                       isValidUserAccount(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       isValidUserAccount(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'preferredLanguage', 'hrMinThreshold', 'hrMaxThreshold', 'spo2MinThreshold', 'fallDetectionEnabled', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /medical_profiles/{profileId} {
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(profileId) &&
+                         incoming().keys().hasAll(['userId', 'fullName', 'emergencyContactName', 'emergencyContactPhone', 'bloodGroup', 'allergies', 'chronicDiseases', 'currentMedications', 'medicalNotes', 'nfcTokenId', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'fullName', 'emergencyContactName', 'emergencyContactPhone', 'bloodGroup', 'allergies', 'chronicDiseases', 'currentMedications', 'medicalNotes', 'nfcTokenId', 'createdAt', 'updatedAt']) &&
+                         isValidMedicalProfile(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(profileId) &&
+                         isValidMedicalProfile(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'emergencyContactName', 'emergencyContactPhone', 'bloodGroup', 'allergies', 'chronicDiseases', 'currentMedications', 'medicalNotes', 'nfcTokenId', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(profileId);
+      }
+
+      match /measurements/{measurementId} {
+        allow get: if isOwner(userId) && isValidId(measurementId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(measurementId) &&
+                         incoming().keys().hasAll(['userId', 'heartRateBpm', 'spo2Valid', 'sensorQuality', 'movementStatus', 'accelMagnitudeG', 'gyroMagnitudeDps', 'source', 'recordedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'heartRateBpm', 'spo2Percent', 'spo2Valid', 'sensorQuality', 'movementStatus', 'accelMagnitudeG', 'gyroMagnitudeDps', 'batteryPercent', 'source', 'recordedAt']) &&
+                         isValidMeasurement(incoming(), userId);
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(measurementId);
+      }
+
+      match /emergencies/{eventId} {
+        allow get: if isOwner(userId) && isValidId(eventId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(eventId) &&
+                         incoming().keys().hasAll(['userId', 'triggerType', 'status', 'locationLabel', 'notificationStatus', 'notes', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'triggerType', 'status', 'heartRateAtEvent', 'spo2AtEvent', 'latitude', 'longitude', 'locationLabel', 'notificationStatus', 'notes', 'createdAt', 'updatedAt']) &&
+                         isValidEmergencyEvent(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(eventId) &&
+                         isValidEmergencyEvent(incoming(), userId) &&
+                         !(existing().status in ['CANCELLED', 'RESOLVED']) &&
+                         incoming().userId == existing().userId &&
+                         incoming().triggerType == existing().triggerType &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notificationStatus', 'latitude', 'longitude', 'locationLabel', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(eventId);
+      }
+
+      match /alerts/{alertId} {
+        allow get: if isOwner(userId) && isValidId(alertId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(alertId) &&
+                         incoming().keys().hasAll(['userId', 'category', 'severity', 'title', 'message', 'acknowledged', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'category', 'severity', 'title', 'message', 'acknowledged', 'createdAt', 'updatedAt']) &&
+                         isValidAlertRecord(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(alertId) &&
+                         isValidAlertRecord(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().category == existing().category &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['acknowledged', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(alertId);
+      }
+
+      match /devices/{deviceId} {
+        allow get: if isOwner(userId) && isValidId(deviceId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(deviceId) &&
+                         incoming().keys().hasAll(['userId', 'deviceName', 'macAddress', 'firmwareVersion', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'deviceName', 'macAddress', 'firmwareVersion', 'batteryPercent', 'lastSyncAt', 'createdAt', 'updatedAt']) &&
+                         isValidDevice(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(deviceId) &&
+                         isValidDevice(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().macAddress == existing().macAddress &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['deviceName', 'firmwareVersion', 'batteryPercent', 'lastSyncAt', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(deviceId);
+      }
+
+      match /nfc_tokens/{tokenId} {
+        allow get: if isOwner(userId) && isValidId(tokenId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(tokenId) &&
+                         incoming().keys().hasAll(['userId', 'tokenId', 'profileId', 'tagUidHex', 'label', 'active', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'tokenId', 'profileId', 'tagUidHex', 'label', 'active', 'createdAt', 'updatedAt']) &&
+                         isValidNfcToken(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(tokenId) &&
+                         isValidNfcToken(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().tokenId == existing().tokenId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['profileId', 'tagUidHex', 'label', 'active', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(tokenId);
+      }
+    }
+  }
+}

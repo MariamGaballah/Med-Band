@@ -1,0 +1,6 @@
+{
+  "name": "MedBand",
+  "description": "Smart Medical Bracelet — Health in Your Hand. Real-time ESP32-C3 BLE vitals monitoring, movement & fall-pattern alerts, encrypted medical profile & NFC transfer, emergency response with nearby medical center grounding, and Firebase cloud sync in Arabic RTL and English LTR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

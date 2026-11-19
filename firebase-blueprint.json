@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated MedBand user settings, alert thresholds, and language preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "User display name (1..100 chars)." },
+        "email": { "type": "string", "description": "Optional user email address." },
+        "preferredLanguage": { "type": "string", "enum": ["ar", "en"] },
+        "hrMinThreshold": { "type": "integer", "description": "Minimum heart rate threshold in BPM (30..120)." },
+        "hrMaxThreshold": { "type": "integer", "description": "Maximum heart rate threshold in BPM (80..220)." },
+        "spo2MinThreshold": { "type": "integer", "description": "Minimum SpO2 threshold percentage (70..98)." },
+        "fallDetectionEnabled": { "type": "boolean", "description": "Whether experimental fall-pattern alerts are enabled." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "displayName", "preferredLanguage", "hrMinThreshold", "hrMaxThreshold", "spo2MinThreshold", "fallDetectionEnabled", "createdAt", "updatedAt"]
+    },
+    "MedicalProfile": {
+      "title": "MedicalProfile",
+      "description": "Private emergency medical profile stored per user and referenced by opaque NFC token.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "emergencyContactName": { "type": "string" },
+        "emergencyContactPhone": { "type": "string" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "UNKNOWN"] },
+        "allergies": { "type": "string" },
+        "chronicDiseases": { "type": "string" },
+        "currentMedications": { "type": "string" },
+        "medicalNotes": { "type": "string" },
+        "nfcTokenId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName", "emergencyContactName", "emergencyContactPhone", "bloodGroup", "allergies", "chronicDiseases", "currentMedications", "medicalNotes", "nfcTokenId", "createdAt", "updatedAt"]
+    },
+    "VitalMeasurement": {
+      "title": "VitalMeasurement",
+      "description": "Timestamped MAX30102 + MPU6050 measurement received over BLE.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "heartRateBpm": { "type": "integer" },
+        "spo2Percent": { "type": "integer" },
+        "spo2Valid": { "type": "boolean" },
+        "sensorQuality": { "type": "string", "enum": ["GOOD", "FAIR", "POOR", "UNAVAILABLE"] },
+        "movementStatus": { "type": "string", "enum": ["RESTING", "WALKING", "ACTIVE", "UNUSUAL_MOVEMENT", "POSSIBLE_FALL"] },
+        "accelMagnitudeG": { "type": "number" },
+        "gyroMagnitudeDps": { "type": "number" },
+        "batteryPercent": { "type": "integer" },
+        "source": { "type": "string" },
+        "recordedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "heartRateBpm", "spo2Valid", "sensorQuality", "movementStatus", "accelMagnitudeG", "gyroMagnitudeDps", "source", "recordedAt"]
+    },
+    "EmergencyEvent": {
+      "title": "EmergencyEvent",
+      "description": "Emergency SOS, critical vitals, or fall-pattern confirmation event.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "triggerType": { "type": "string", "enum": ["SOS_MANUAL", "POSSIBLE_FALL", "CRITICAL_VITALS"] },
+        "status": { "type": "string", "enum": ["PENDING_CONFIRMATION", "CONFIRMED", "CANCELLED", "RESOLVED"] },
+        "heartRateAtEvent": { "type": "integer" },
+        "spo2AtEvent": { "type": "integer" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "locationLabel": { "type": "string" },
+        "notificationStatus": { "type": "string", "enum": ["NOT_SENT", "DISPATCHED_INTENT", "CANCELLED"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "triggerType", "status", "locationLabel", "notificationStatus", "notes", "createdAt", "updatedAt"]
+    },
+    "AlertRecord": {
+      "title": "AlertRecord",
+      "description": "Notification & health alert record with severity and acknowledgement.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["HIGH_HR", "LOW_HR", "LOW_SPO2", "SENSOR_QUALITY", "UNUSUAL_MOVEMENT", "POSSIBLE_FALL", "BLE_DISCONNECTED", "LOW_BATTERY", "SENSOR_ERROR", "EMERGENCY"] },
+        "severity": { "type": "string", "enum": ["INFO", "WARNING", "CRITICAL"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "acknowledged": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "severity", "title", "message", "acknowledged", "createdAt", "updatedAt"]
+    },
+    "BraceletDevice": {
+      "title": "BraceletDevice",
+      "description": "Paired MedBand ESP32-C3 hardware registration and sync metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "macAddress": { "type": "string" },
+        "firmwareVersion": { "type": "string" },
+        "batteryPercent": { "type": "integer" },
+        "lastSyncAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deviceName", "macAddress", "firmwareVersion", "createdAt", "updatedAt"]
+    },
+    "NfcTokenRecord": {
+      "title": "NfcTokenRecord",
+      "description": "Opaque NFC tag association mapping a token ID to a user's medical profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tokenId": { "type": "string" },
+        "profileId": { "type": "string" },
+        "tagUidHex": { "type": "string" },
+        "label": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "tokenId", "profileId", "tagUidHex", "label", "active", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User account preferences and alert thresholds."
+    },
+    "/users/{userId}/medical_profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/MedicalProfile" },
+      "description": "Authenticated user's emergency medical profile."
+    },
+    "/users/{userId}/measurements/{measurementId}": {
+      "schema": { "$ref": "#/entities/VitalMeasurement" },
+      "description": "Historical vital signs and movement telemetry from ESP32-C3."
+    },
+    "/users/{userId}/emergencies/{eventId}": {
+      "schema": { "$ref": "#/entities/EmergencyEvent" },
+      "description": "Emergency SOS and fall-confirmation events."
+    },
+    "/users/{userId}/alerts/{alertId}": {
+      "schema": { "$ref": "#/entities/AlertRecord" },
+      "description": "Notification and alert history."
+    },
+    "/users/{userId}/devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/BraceletDevice" },
+      "description": "Registered MedBand ESP32-C3 BLE devices."
+    },
+    "/users/{userId}/nfc_tokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/NfcTokenRecord" },
+      "description": "Opaque NFC tag tokens linked to the user's medical profile."
+    }
+  }
+}
